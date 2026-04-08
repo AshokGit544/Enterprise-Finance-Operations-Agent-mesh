@@ -1,0 +1,10 @@
+streamlit
+pandas
+langgraph
+langchain
+langchain-community
+sentence-transformers
+faiss-cpu
+python-dotenv
+pydantic
+numpy
