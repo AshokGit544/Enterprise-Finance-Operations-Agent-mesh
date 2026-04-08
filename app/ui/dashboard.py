@@ -5,6 +5,7 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 import pandas as pd
 import streamlit as st
+import plotly.express as px
 from app.workflows.finance_graph import build_finance_graph
 from app.governance.audit_logger import log_audit_record, AUDIT_FILE
 from app.ui.ui_helpers import get_decision_options, get_role_options
@@ -17,12 +18,86 @@ def clear_audit_filters():
     st.session_state["invoice_search"] = ""
 
 
+def build_fixed_bar_figure(dataframe, x_col, y_col, title):
+    max_y = float(dataframe[y_col].max()) if not dataframe.empty else 1.0
+    upper = max(1.0, max_y * 1.15)
+
+    fig = px.bar(
+        dataframe,
+        x=x_col,
+        y=y_col,
+        title=title,
+        text=y_col
+    )
+
+    fig.update_traces(
+        hovertemplate=f"{x_col}: %{{x}}<br>{y_col}: %{{y}}<extra></extra>",
+        textposition="outside",
+        cliponaxis=False
+    )
+
+    fig.update_layout(
+        height=380,
+        dragmode=False,
+        showlegend=False,
+        xaxis_title=x_col.replace("_", " ").title(),
+        yaxis_title=y_col.replace("_", " ").title(),
+        xaxis=dict(
+            fixedrange=True
+        ),
+        yaxis=dict(
+            range=[0, upper],
+            fixedrange=True,
+            rangemode="tozero"
+        ),
+        margin=dict(l=40, r=20, t=60, b=80)
+    )
+
+    return fig
+
+
+def build_fixed_line_figure(dataframe, x_col, y_col, title):
+    max_y = float(dataframe[y_col].max()) if not dataframe.empty else 1.0
+    upper = max(1.0, max_y * 1.15)
+
+    fig = px.line(
+        dataframe,
+        x=x_col,
+        y=y_col,
+        title=title,
+        markers=True
+    )
+
+    fig.update_traces(
+        hovertemplate=f"{x_col}: %{{x}}<br>{y_col}: %{{y}}<extra></extra>"
+    )
+
+    fig.update_layout(
+        height=380,
+        dragmode=False,
+        showlegend=False,
+        xaxis_title=x_col.replace("_", " ").title(),
+        yaxis_title=y_col.replace("_", " ").title(),
+        xaxis=dict(
+            fixedrange=True
+        ),
+        yaxis=dict(
+            range=[0, upper],
+            fixedrange=True,
+            rangemode="tozero"
+        ),
+        margin=dict(l=40, r=20, t=60, b=40)
+    )
+
+    return fig
+
+
 st.set_page_config(page_title="Enterprise Finance Operations Agent Mesh", layout="wide")
 
 app = build_finance_graph()
 
 st.title("Enterprise Finance Operations Agent Mesh")
-st.subheader("Governed LangGraph + Hugging Face Finance Workflow")
+st.subheader("Governed LangGraph and Hugging Face Finance Workflow")
 
 # Sidebar
 st.sidebar.title("Settings")
@@ -153,8 +228,24 @@ if AUDIT_FILE.exists():
     m7.metric("Retry Required", retry_count)
 
     st.write("### Final Status Distribution")
-    status_counts = audit_df["final_status"].value_counts()
-    st.bar_chart(status_counts)
+    status_counts = audit_df["final_status"].value_counts().reset_index()
+    status_counts.columns = ["final_status", "count"]
+
+    status_fig = build_fixed_bar_figure(
+        status_counts,
+        "final_status",
+        "count",
+        "Final Status Distribution"
+    )
+    st.plotly_chart(
+        status_fig,
+        use_container_width=True,
+        config={
+            "displayModeBar": False,
+            "scrollZoom": False,
+            "staticPlot": True
+        }
+    )
 
     st.write("### Workflow Run Trend")
     trend_df = audit_df.copy()
@@ -170,14 +261,45 @@ if AUDIT_FILE.exists():
 
     if not daily_runs.empty:
         daily_runs["run_date"] = pd.to_datetime(daily_runs["run_date"])
-        st.line_chart(daily_runs.set_index("run_date")["run_count"])
+
+        trend_fig = build_fixed_line_figure(
+            daily_runs,
+            "run_date",
+            "run_count",
+            "Workflow Run Trend"
+        )
+        st.plotly_chart(
+            trend_fig,
+            use_container_width=True,
+            config={
+                "displayModeBar": False,
+                "scrollZoom": False,
+                "staticPlot": True
+            }
+        )
     else:
         st.info("No trend data available yet.")
 
     st.write("### Role-Based Action Summary")
     if "user_role" in audit_df.columns:
-        role_counts = audit_df["user_role"].fillna("unknown").value_counts()
-        st.bar_chart(role_counts)
+        role_counts = audit_df["user_role"].fillna("unknown").value_counts().reset_index()
+        role_counts.columns = ["user_role", "count"]
+
+        role_fig = build_fixed_bar_figure(
+            role_counts,
+            "user_role",
+            "count",
+            "Role-Based Action Summary"
+        )
+        st.plotly_chart(
+            role_fig,
+            use_container_width=True,
+            config={
+                "displayModeBar": False,
+                "scrollZoom": False,
+                "staticPlot": True
+            }
+        )
     else:
         st.info("No role data available yet.")
 
@@ -187,8 +309,24 @@ if AUDIT_FILE.exists():
     ]
 
     if not failure_df.empty:
-        failure_counts = failure_df["final_status"].value_counts()
-        st.bar_chart(failure_counts)
+        failure_counts = failure_df["final_status"].value_counts().reset_index()
+        failure_counts.columns = ["final_status", "count"]
+
+        failure_fig = build_fixed_bar_figure(
+            failure_counts,
+            "final_status",
+            "count",
+            "Governance Failure Summary"
+        )
+        st.plotly_chart(
+            failure_fig,
+            use_container_width=True,
+            config={
+                "displayModeBar": False,
+                "scrollZoom": False,
+                "staticPlot": True
+            }
+        )
     else:
         st.info("No governance failures recorded yet.")
 
