@@ -13,7 +13,7 @@ def get_decision_options(invoice_id: str):
     recommendation = result.get("recommendation", "").lower()
 
     if "manager approval" in recommendation:
-        return ["Select manager decision", "approved", "rejected"]
+        return ["Select approval decision", "approved", "rejected"]
     elif "investigate" in recommendation or "hold" in recommendation:
         return ["Select investigation outcome", "resolved"]
     elif "escalate" in recommendation:
@@ -41,6 +41,6 @@ def get_role_options(invoice_id: str):
     elif "escalate" in recommendation:
         return ["finance_ops", "admin"]
     elif "approve" in recommendation:
-        return ["analyst", "manager", "admin"]
+        return ["analyst", "admin"]
     else:
         return ["analyst", "admin"]
